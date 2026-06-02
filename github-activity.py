@@ -85,8 +85,8 @@ def format_summary_item(event_type, repo_name, detail, count):
     if event_type == "CreateEvent":
         return f"- {count} {"branches were" if count > 1 else "branch was"} created in {repo_name}."
     
-    if event_type == "PullRequestEvent": 
-        return f"- {count +"pull requests" if count > 1 else "A pull request"} was {detail} in {repo_name}."
+    if event_type == "PullRequestEvent":
+        return f"- {f"{count} pull requests were" if count > 1 else "A pull request was"} {detail} in {repo_name}."
     
     if event_type == "WatchEvent": 
         return f"- Starred {repo_name}."
@@ -94,14 +94,14 @@ def format_summary_item(event_type, repo_name, detail, count):
     if event_type == "ForkEvent":
         return f"- Forked {repo_name}."
     
-    return f"- {event_type} occured {count + "times" if count > 1 else "once"} in {repo_name}."
+    return f"- {event_type} occurred {f'{count} times' if count > 1 else 'once'} in {repo_name}."
 
 #TODO
 def display_activity(summary):
 
     print("Output:")
     
-    if not dict:
+    if not summary:
         print("No recent public activity found")
 
     else :
@@ -114,12 +114,28 @@ def display_activity(summary):
 def handle_http_error(error):
     """Convert GitHub HTTP errors into friendly CLI messages."""
 
+    if error.code == 404:
+        return "User not found. Check the username and try again."
+    if error.code == 403:
+        return "GitHub API rate limit reached. Try again later."
+    return f"GitHub API returned an error ({error.code})."
+
 #TODO
 def main():
     """Run the CLI."""
 
     args = parse_args()
-    events = fetch_activity(args.username)
+
+    try:
+        events = fetch_activity(args.username)
+    
+    except HTTPError as error:
+        sys.exit(handle_http_error(error))
+    except URLError as error:
+        sys.exit(f"Could not reach GitHub: {error.reason}")
+    except json.JSONDecodeError:
+        sys.exit("GitHub returned an unexpected response.")
+
     summary = summarise_events(events)
     display_activity(summary)
 
